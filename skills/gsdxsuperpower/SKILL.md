@@ -35,6 +35,7 @@ Invoke these skills at the designated steps:
 - **requesting-code-review** and **receiving-code-review**: slice and milestone gates.
 - **systematic-debugging**: handle failures without prematurely asking the user.
 - **finishing-a-development-branch**: finish with merge/PR options.
+- **Task-type verification matrix**: see [references/mcp-and-test-strategy.md](references/mcp-and-test-strategy.md) when choosing between TDD and evidence-based verification.
 
 ## State Machine
 
