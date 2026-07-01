@@ -18,7 +18,9 @@ branch completion.
 
 **Core principle:** GSD complete state must never move ahead of verifiable
 engineering state. A milestone is not complete until GSD state, git history,
-tests, review, and gate artifacts agree.
+tests, review, and gate artifacts agree. A milestone being complete does not
+automatically mean the work is ready to deliver; delivery requires its own
+readiness check when the user asks to ship, merge, deploy, publish, or hand off.
 
 **HARD GATE** marks steps that must not be skipped, reordered, or replaced with
 informal notes unless the user explicitly approves a recorded deviation.
@@ -42,7 +44,8 @@ Invoke these skills at the designated steps:
 ```dot
 digraph gsdxsuperpower {
   "Prereqs + GSD live?" -> "HALT with fix instructions" [label="no"];
-  "Prereqs + GSD live?" -> "Resume GSD state" [label="yes"];
+  "Prereqs + GSD live?" -> "State snapshot" [label="yes"];
+  "State snapshot" -> "Resume GSD state";
   "Resume GSD state" -> "Create/check out gsd/<M> worktree";
   "Create/check out gsd/<M> worktree" -> "Next slice by roadmap order";
   "Next slice by roadmap order" -> "Consume GSD task plans";
@@ -53,7 +56,8 @@ digraph gsdxsuperpower {
   "More slices?" -> "Next slice by roadmap order" [label="yes"];
   "More slices?" -> "Milestone close gate" [label="no"];
   "Milestone close gate" -> "Complete milestone through GSD";
-  "Complete milestone through GSD" -> "Finish branch";
+  "Complete milestone through GSD" -> "Delivery readiness gate";
+  "Delivery readiness gate" -> "Finish branch";
 }
 ```
 
@@ -71,6 +75,28 @@ digraph gsdxsuperpower {
    - Work on `gsd/<MilestoneID>`, never directly on `main`.
    - If using a separate code worktree, explicitly name which path owns code
      changes and which path owns `.gsd` state.
+
+## Phase 0.5: State Snapshot (HARD GATE)
+
+Before changing files, running implementation agents, or completing GSD items,
+emit a concise state snapshot. Use it to align the user, GSD, and git state
+without re-reading chat history.
+
+```markdown
+## STATE-SNAPSHOT
+- GSD access mode: MCP | CLI | fallback | unavailable
+- Active milestone/slice/task: <Mxxx/Sxx/Txx or none>
+- GSD phase: <planning | executing | reviewing | complete | unknown>
+- Git branch/worktree: <branch + path>
+- Git dirty status: <clean or classified summary>
+- Plan/source artifact: <PRD/ROADMAP/Sxx-PLAN/Txx-PLAN path>
+- Next hard gate: <task gate | slice review | milestone close | delivery readiness>
+- Deviations already active: none | <CONTROLLED_* list>
+```
+
+If the snapshot exposes contradictory state, such as GSD complete with missing
+gates or a dirty milestone worktree, stop normal execution and follow Invalid
+Complete State Protocol or Dirty Worktree Classification before continuing.
 
 ## Phase 1: Resume and Select Work
 
@@ -220,6 +246,34 @@ After all slices are complete:
 - Deviations: none | <CONTROLLED_* record>
 ```
 
+## Phase 4: Delivery Readiness Gate (HARD GATE when shipping)
+
+Run this gate after milestone close and before any ship, merge, deploy, publish,
+release artifact handoff, or user-facing delivery claim. Keep it project-agnostic:
+the project may deliver code, packages, documents, infrastructure, datasets,
+configuration, or other artifacts.
+
+Delivery readiness does not replace milestone completion. It checks whether the
+completed engineering work is safe and clear to hand off.
+
+```markdown
+## DELIVERY-READINESS-GATE
+- Delivery request: ship | merge | deploy | publish | handoff | other
+- Deliverable artifact: <path/id/version, or N/A with reason>
+- Source commit SHA: <sha>
+- Target: <branch/environment/registry/customer/internal handoff/etc.>
+- Verification evidence: <commands, reports, approvals, smoke results>
+- Review status: approved | blocked | deferred
+- Rollback/cleanup requirement: none | <required steps>
+- External dependency readiness: N/A | ready | blocked | deferred
+- Unresolved risks: none | <risk + owner + reason>
+- Delivery verdict: ready | blocked | deferred
+```
+
+If any required delivery evidence is missing, mark the verdict `blocked` or
+`deferred`. Do not claim the work is shipped, deployed, published, or ready for
+handoff from milestone completion alone.
+
 ## Gate Artifact Paths
 
 Prefer these paths so future agents can audit the run without searching chat
@@ -228,6 +282,7 @@ history:
 - Task gate: `.gsd/milestones/Mxxx/slices/Sxx/tasks/Txx-GATE.md`
 - Slice review gate: `.gsd/milestones/Mxxx/slices/Sxx/Sxx-REVIEW-GATE.md`
 - Milestone close gate: `.gsd/milestones/Mxxx/Mxxx-CLOSE-GATE.md`
+- Delivery readiness gate: `.gsd/milestones/Mxxx/Mxxx-DELIVERY-READINESS-GATE.md`
 - Completion repair/deviation: `.gsd/milestones/Mxxx/Mxxx-COMPLETION-REPAIR.md`
 
 If the active GSD setup forbids direct artifact files, write the same fields
@@ -348,4 +403,5 @@ Task `M005/S03/T01` adds shift calculation helpers.
 
 Do not claim completion from a single signal. A GSD milestone is complete only
 when the GSD state, git history, verification evidence, review artifacts, and
-handoff/finish state all agree.
+handoff/finish state all agree. Delivery, release, deployment, or handoff is a
+separate claim that additionally requires the Delivery Readiness Gate.
